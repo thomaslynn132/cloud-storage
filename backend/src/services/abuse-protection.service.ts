@@ -42,7 +42,7 @@ export class AbuseProtectionService {
     }
   }
 
-  async recordIPRequest(ip: string): void {
+  async recordIPRequest(ip: string): Promise<void> {
     const key = `ip:${ip}`;
     const now = Date.now();
     const requests = this.blockedIPs.get(key) || 0;

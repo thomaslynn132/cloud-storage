@@ -1,21 +1,19 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import * as bcrypt from 'bcrypt';
-import { User } from '../../../entities/user.entity';
-import { RegisterDto, LoginDto } from '../dto/auth.dto';
-import { jwtConfig } from '../../../config/jwt.config';
+const { Injectable, UnauthorizedException } = require('@nestjs/common');
+const bcrypt = require('bcrypt');
+const { InjectRepository } = require('@nestjs/typeorm');
+const { Repository } = require('typeorm');
+const { User } = require('../../entities/user.entity');
+const { jwtConfig } = require('../../config/jwt.config');
 
 @Injectable()
-export class AuthService {
+class AuthService {
   constructor(
     @InjectRepository(User)
-    private userRepository: Repository<User>,
-    private jwtService: JwtService,
+    private userRepository,
+    private jwtService,
   ) {}
 
-  async register(dto: RegisterDto) {
+  async register(dto) {
     const existing = await this.userRepository.findOne({
       where: { email: dto.email },
     });
@@ -33,7 +31,7 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
-  async login(dto: LoginDto) {
+  async login(dto) {
     const user = await this.userRepository.findOne({
       where: { email: dto.email },
     });
@@ -44,7 +42,7 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
-  async refreshToken(refreshToken: string) {
+  async refreshToken(refreshToken) {
     try {
       const payload = this.jwtService.verify(refreshToken, {
         secret: jwtConfig.secret,
@@ -61,11 +59,19 @@ export class AuthService {
     }
   }
 
-  private generateTokens(user: User) {
+  generateTokens(user) {
     const payload = { sub: user.id, email: user.email, planType: user.planType };
     return {
-      accessToken: this.jwtService.sign(payload, { expiresIn: '15m', secret: jwtConfig.secret }),
-      refreshToken: this.jwtService.sign(payload, { expiresIn: '7d', secret: jwtConfig.secret }),
+      accessToken: this.jwtService.sign(payload, {
+        expiresIn: jwtConfig.accessTokenExpiry,
+        secret: jwtConfig.secret,
+      }),
+      refreshToken: this.jwtService.sign(payload, {
+        expiresIn: jwtConfig.refreshTokenExpiry,
+        secret: jwtConfig.secret,
+      }),
     };
   }
 }
+
+module.exports = { AuthService };

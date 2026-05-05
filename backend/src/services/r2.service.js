@@ -1,25 +1,22 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { r2Config } from '../config/r2.config';
+const { Injectable } = require('@nestjs/common');
+const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { r2Config } = require('../config/r2.config');
 
 @Injectable()
-export class R2Service {
-  private readonly logger = new Logger(R2Service.name);
-  private s3Client: S3Client;
-
+class R2Service {
   constructor() {
     this.s3Client = new S3Client({
       endpoint: r2Config.endpoint,
       credentials: {
-        accessKeyId: r2Config.accessKeyId!,
-        secretAccessKey: r2Config.secretAccessKey!,
+        accessKeyId: r2Config.accessKeyId,
+        secretAccessKey: r2Config.secretAccessKey,
       },
       region: 'auto',
     });
   }
 
-  async uploadFile(key: string, body: Buffer, contentType: string): Promise<void> {
+  async uploadFile(key, body, contentType) {
     const command = new PutObjectCommand({
       Bucket: r2Config.bucketName,
       Key: key,
@@ -29,7 +26,7 @@ export class R2Service {
     await this.s3Client.send(command);
   }
 
-  async getSignedDownloadUrl(key: string, expiresIn: number = 3600): Promise<string> {
+  async getSignedDownloadUrl(key, expiresIn = 3600) {
     const command = new GetObjectCommand({
       Bucket: r2Config.bucketName,
       Key: key,
@@ -37,7 +34,7 @@ export class R2Service {
     return getSignedUrl(this.s3Client, command, { expiresIn });
   }
 
-  async getSignedUploadUrl(key: string, contentType: string, expiresIn: number = 3600): Promise<string> {
+  async getSignedUploadUrl(key, contentType, expiresIn = 3600) {
     const command = new PutObjectCommand({
       Bucket: r2Config.bucketName,
       Key: key,
@@ -46,7 +43,7 @@ export class R2Service {
     return getSignedUrl(this.s3Client, command, { expiresIn });
   }
 
-  async deleteFile(key: string): Promise<void> {
+  async deleteFile(key) {
     const command = new DeleteObjectCommand({
       Bucket: r2Config.bucketName,
       Key: key,
@@ -54,7 +51,7 @@ export class R2Service {
     await this.s3Client.send(command);
   }
 
-  async fileExists(key: string): Promise<boolean> {
+  async fileExists(key) {
     try {
       const command = new HeadObjectCommand({
         Bucket: r2Config.bucketName,
@@ -67,7 +64,9 @@ export class R2Service {
     }
   }
 
-  getPublicUrl(key: string): string {
+  getPublicUrl(key) {
     return `${r2Config.publicUrl}/${key}`;
   }
 }
+
+module.exports = { R2Service };

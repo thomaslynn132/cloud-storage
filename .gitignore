@@ -1,7 +1,9 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# See https://git-scm.com/docs/gitignore
 
-# dependencies
-node_modules
+# =========================
+# Dependencies
+# =========================
+node_modules/
 .pnp
 .pnp.*
 .yarn/*
@@ -10,56 +12,79 @@ node_modules
 !.yarn/releases
 !.yarn/versions
 
-# testing
-coverage
+# =========================
+# Testing
+# =========================
+coverage/
 
-# next.js
+# =========================
+# Next.js
+# =========================
 .next/
 out/
 
-# production
-build
-dist
+# =========================
+# Production builds
+# =========================
+build/
+dist/
 
-# misc
-.DS_Store
-*.pem
-Thumbs.db
-Desktop.ini
+# =========================
+# Environment variables
+# =========================
+.env*
 
-# debug
+# =========================
+# Logs
+# =========================
+logs/
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
-!.env.example
+# =========================
+# OS / System files
+# =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
 
-# vercel
-.vercel
+# =========================
+# Security
+# =========================
+*.pem
 
-# typescript
+# =========================
+# TypeScript
+# =========================
 *.tsbuildinfo
 next-env.d.ts
 
+# =========================
 # Database
+# =========================
 *.db
 *.sqlite
 *.sqlite3
 
-# Logs
-logs/
-*.log
-
-# IDE
+# =========================
+# IDE / Editor
+# =========================
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# Uploads
+# =========================
+# Vercel
+# =========================
+.vercel/
+
+# =========================
+# Uploads / Temp files
+# =========================
 uploads/
 temp/

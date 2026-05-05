@@ -8,9 +8,9 @@
   "scripts": {
     "build": "echo skip build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "node src/main.js",
-    "start:dev": "node src/main.js",
-    "start:debug": "node src/main.js",
+    "start": "node dist/main",
+    "start:dev": "ts-node src/main.ts",
+    "start:debug": "ts-node src/main.ts",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",

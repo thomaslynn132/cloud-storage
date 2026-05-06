@@ -1,17 +1,14 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from '../../entities/user.entity';
-import { appConfig } from '../../config/app.config';
+import { appConfig } from '../../../config/app.config';
 import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../../../services/prisma.service';
 
 @Injectable()
 export class AdminSeedService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AdminSeedService.name);
 
   constructor(
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private prisma: PrismaService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -19,7 +16,7 @@ export class AdminSeedService implements OnApplicationBootstrap {
   }
 
   private async seedAdmin() {
-    const existingAdmin = await this.userRepository.findOne({
+    const existingAdmin = await this.prisma.user.findFirst({
       where: { isAdmin: true },
     });
 
@@ -29,14 +26,15 @@ export class AdminSeedService implements OnApplicationBootstrap {
     }
 
     const passwordHash = await bcrypt.hash(appConfig.adminPassword, 10);
-    const admin = this.userRepository.create({
-      email: appConfig.adminEmail,
-      passwordHash,
-      planType: 'paid',
-      isAdmin: true,
+    const admin = await this.prisma.user.create({
+      data: {
+        email: appConfig.adminEmail,
+        passwordHash,
+        planType: 'paid',
+        isAdmin: true,
+      },
     });
 
-    await this.userRepository.save(admin);
     this.logger.log(`Admin account created: ${appConfig.adminEmail}`);
     this.logger.log(`Password: ${appConfig.adminPassword}`);
   }

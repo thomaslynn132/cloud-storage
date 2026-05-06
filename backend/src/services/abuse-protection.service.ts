@@ -18,7 +18,7 @@ export class AbuseProtectionService {
   private readonly MAX_REQUESTS_PER_HOUR = 100;
 
   constructor(
-    @InjectRepository('BlockedHash')
+    @InjectRepository('BlockedHash' as any)
     private blockedHashRepository: Repository<any>,
   ) {
     this.loadBlockedHashes();

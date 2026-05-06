@@ -1,13 +1,10 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { File } from '../../entities/file.entity';
-import { User } from '../../entities/user.entity';
-import { R2Service } from '../../services/r2.service';
-import { HashService } from '../../services/hash.service';
-import { FileService } from '../file/services/file.service';
-import { InitUploadDto, CompleteUploadDto } from './dto/upload.dto';
-import { appConfig } from '../../config/app.config';
+import { R2Service } from '../../../services/r2.service';
+import { HashService } from '../../../services/hash.service';
+import { FileService } from '../../file/services/file.service';
+import { InitUploadDto, CompleteUploadDto } from '../dto/upload.dto';
+import { appConfig } from '../../../config/app.config';
+import { PrismaService } from '../../../services/prisma.service';
 
 @Injectable()
 export class UploadService {
@@ -15,17 +12,14 @@ export class UploadService {
   private uploadSessions: Map<string, { chunks: number; storageKey: string; userId: string }> = new Map();
 
   constructor(
-    @InjectRepository(File)
-    private fileRepository: Repository<File>,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private prisma: PrismaService,
     private r2Service: R2Service,
     private hashService: HashService,
     private fileService: FileService,
   ) {}
 
   async initUpload(userId: string, dto: InitUploadDto) {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }

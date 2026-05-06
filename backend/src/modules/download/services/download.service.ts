@@ -1,32 +1,25 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Request } from 'express';
-import { File } from '../../entities/file.entity';
-import { Download } from '../../entities/download.entity';
-import { R2Service } from '../../services/r2.service';
-import { SignedUrlService } from '../../services/signed-url.service';
-import { FileService } from '../file/services/file.service';
-import { appConfig } from '../../config/app.config';
+import { R2Service } from '../../../services/r2.service';
+import { SignedUrlService } from '../../../services/signed-url.service';
+import { FileService } from '../../file/services/file.service';
+import { appConfig } from '../../../config/app.config';
+import { PrismaService } from '../../../services/prisma.service';
 
 @Injectable()
 export class DownloadService {
   private readonly logger = new Logger(DownloadService.name);
 
   constructor(
-    @InjectRepository(File)
-    private fileRepository: Repository<File>,
-    @InjectRepository(Download)
-    private downloadRepository: Repository<Download>,
+    private prisma: PrismaService,
     private r2Service: R2Service,
     private signedUrlService: SignedUrlService,
     private fileService: FileService,
   ) {}
 
   async getFileForAd(fileId: string) {
-    const file = await this.fileRepository.findOne({
+    const file = await this.prisma.file.findUnique({
       where: { id: fileId, isDeleted: false },
-      relations: ['user'],
+      include: { user: true },
     });
 
     if (!file) {
@@ -46,7 +39,7 @@ export class DownloadService {
   }
 
   async verifyAdView(fileId: string, ipAddress: string): Promise<{ adToken: string; downloadUrl: string }> {
-    const file = await this.fileRepository.findOne({
+    const file = await this.prisma.file.findUnique({
       where: { id: fileId, isDeleted: false },
     });
 
@@ -54,12 +47,13 @@ export class DownloadService {
       throw new NotFoundException('File not found');
     }
 
-    const download = this.downloadRepository.create({
-      fileId: file.id,
-      ipAddress,
-      adShown: true,
+    await this.prisma.download.create({
+      data: {
+        fileId: file.id,
+        ipAddress,
+        adShown: true,
+      },
     });
-    await this.downloadRepository.save(download);
 
     const adToken = this.signedUrlService.generateAdToken(fileId, ipAddress);
     const downloadToken = this.signedUrlService.generateDownloadToken(fileId, ipAddress);
@@ -79,7 +73,7 @@ export class DownloadService {
         throw new BadRequestException('Invalid IP address');
       }
 
-      const file = await this.fileRepository.findOne({
+      const file = await this.prisma.file.findUnique({
         where: { id: payload.fileId, isDeleted: false },
       });
 

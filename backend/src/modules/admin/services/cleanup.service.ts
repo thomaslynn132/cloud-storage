@@ -1,10 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { FileService } from '../file/services/file.service';
-import { File } from '../../entities/file.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from '../../entities/user.entity';
+import { FileService } from '../../file/services/file.service';
+import { PrismaService } from '../../../services/prisma.service';
 
 @Injectable()
 export class CleanupService {
@@ -12,8 +9,7 @@ export class CleanupService {
 
   constructor(
     private fileService: FileService,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private prisma: PrismaService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
@@ -43,15 +39,19 @@ export class CleanupService {
   async checkExpiredSubscriptions() {
     this.logger.log('Checking expired subscriptions...');
     
-    const users = await this.userRepository.find({
+    const users = await this.prisma.user.findMany({
       where: { planType: 'paid' },
     });
 
     for (const user of users) {
       if (user.subscriptionExpiresAt && user.subscriptionExpiresAt < new Date()) {
-        user.planType = 'free';
-        user.subscriptionExpiresAt = null;
-        await this.userRepository.save(user);
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            planType: 'free',
+            subscriptionExpiresAt: null,
+          },
+        });
         this.logger.log(`Downgraded user ${user.id} to free plan`);
       }
     }

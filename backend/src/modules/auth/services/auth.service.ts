@@ -1,22 +1,19 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User } from '../../../entities/user.entity';
 import { RegisterDto, LoginDto } from '../dto/auth.dto';
 import { jwtConfig } from '../../../config/jwt.config';
+import { PrismaService } from '../../../services/prisma.service';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private prisma: PrismaService,
     private jwtService: JwtService,
   ) {}
 
   async register(dto: RegisterDto) {
-    const existing = await this.userRepository.findOne({
+    const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
     if (existing) {
@@ -24,17 +21,18 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const user = this.userRepository.create({
-      email: dto.email,
-      passwordHash,
+    const user = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        passwordHash,
+      },
     });
-    await this.userRepository.save(user);
 
     return this.generateTokens(user);
   }
 
   async login(dto: LoginDto) {
-    const user = await this.userRepository.findOne({
+    const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
     if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
@@ -49,7 +47,7 @@ export class AuthService {
       const payload = this.jwtService.verify(refreshToken, {
         secret: jwtConfig.secret,
       });
-      const user = await this.userRepository.findOne({
+      const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
       });
       if (!user) {
@@ -61,7 +59,7 @@ export class AuthService {
     }
   }
 
-  private generateTokens(user: User) {
+  private generateTokens(user: any) {
     const payload = { sub: user.id, email: user.email, planType: user.planType };
     return {
       accessToken: this.jwtService.sign(payload, { expiresIn: '15m', secret: jwtConfig.secret }),

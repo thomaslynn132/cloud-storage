@@ -7,15 +7,18 @@ import { ContentDistributionMiddleware } from './middleware/content-distribution
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
   }));
 
   const config = new DocumentBuilder()
     .setTitle('File Hosting Platform API')
-    .setDescription('Cloud file hosting platform with ad-supported download model')
+    .setDescription(
+      'Cloud file hosting platform with ad-supported download model',
+    )
     .setVersion('1.0')
     .addBearerAuth(
       {

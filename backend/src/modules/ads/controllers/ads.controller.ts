@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { AdsService } from './services/ads.service';
+import { AdsService } from '../services/ads.service';
 
 @ApiTags('ads')
 @Controller('ads')

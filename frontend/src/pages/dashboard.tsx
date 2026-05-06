@@ -26,7 +26,7 @@ export default function Dashboard() {
     try {
       const [filesData, storageData] = await Promise.all([
         fileService.getFiles(),
-        api.get('/users/storage').then(r => r.data),
+        api.get('/users/storage').then((r: any) => r.data),
       ]);
       setFiles(filesData);
       setStorageInfo(storageData);

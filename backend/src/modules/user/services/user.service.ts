@@ -1,21 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from '../../../entities/user.entity';
+import { PrismaService } from '../../../services/prisma.service';
 
 @Injectable()
 export class UserService {
   private readonly logger = new Logger(UserService.name);
 
   constructor(
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private prisma: PrismaService,
   ) {}
 
   async getUserProfile(userId: string) {
-    const user = await this.userRepository.findOne({
+    const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: ['id', 'email', 'planType', 'storageUsed', 'createdAt', 'subscriptionExpiresAt'],
+      select: { id: true, email: true, planType: true, storageUsed: true, createdAt: true, subscriptionExpiresAt: true },
     });
 
     if (!user) {
@@ -26,7 +23,7 @@ export class UserService {
   }
 
   async getStorageInfo(userId: string) {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new Error('User not found');
     }

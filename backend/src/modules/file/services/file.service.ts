@@ -1,27 +1,21 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
-import { File } from '../../entities/file.entity';
-import { User } from '../../entities/user.entity';
-import { R2Service } from '../../services/r2.service';
-import { HashService } from '../../services/hash.service';
-import { appConfig } from '../../config/app.config';
+import { R2Service } from '../../../services/r2.service';
+import { HashService } from '../../../services/hash.service';
+import { appConfig } from '../../../config/app.config';
+import { PrismaService } from '../../../services/prisma.service';
 
 @Injectable()
 export class FileService {
   private readonly logger = new Logger(FileService.name);
 
   constructor(
-    @InjectRepository(File)
-    private fileRepository: Repository<File>,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
+    private prisma: PrismaService,
     private r2Service: R2Service,
     private hashService: HashService,
   ) {}
 
-  async createFile(userId: string, fileName: string, size: number, hash: string, storageKey: string, isPermanent: boolean = false): Promise<File> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+  async createFile(userId: string, fileName: string, size: number, hash: string, storageKey: string, isPermanent: boolean = false): Promise<any> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -33,28 +27,30 @@ export class FileService {
 
     const expiryDate = isPermanent ? null : new Date(Date.now() + appConfig.freeFileExpiryDays * 24 * 60 * 60 * 1000);
 
-    const file = this.fileRepository.create({
-      userId,
-      fileName,
-      size,
-      hash,
-      storageKey,
-      isPermanent,
-      expiryDate,
+    const file = await this.prisma.file.create({
+      data: {
+        userId,
+        fileName,
+        size,
+        hash,
+        storageKey,
+        isPermanent,
+        expiryDate,
+      },
     });
 
-    await this.fileRepository.save(file);
-
-    user.storageUsed += size;
-    await this.userRepository.save(user);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { storageUsed: { increment: size } },
+    });
 
     return file;
   }
 
-  async getFile(fileId: string, userId?: string): Promise<File> {
-    const file = await this.fileRepository.findOne({
+  async getFile(fileId: string, userId?: string): Promise<any> {
+    const file = await this.prisma.file.findUnique({
       where: { id: fileId, isDeleted: false },
-      relations: ['user'],
+      include: { user: true },
     });
 
     if (!file) {
@@ -64,15 +60,15 @@ export class FileService {
     return file;
   }
 
-  async getUserFiles(userId: string): Promise<File[]> {
-    return this.fileRepository.find({
+  async getUserFiles(userId: string): Promise<any[]> {
+    return this.prisma.file.findMany({
       where: { userId, isDeleted: false },
-      order: { createdAt: 'DESC' },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
   async deleteFile(fileId: string, userId: string): Promise<void> {
-    const file = await this.fileRepository.findOne({
+    const file = await this.prisma.file.findUnique({
       where: { id: fileId, userId },
     });
 
@@ -80,46 +76,57 @@ export class FileService {
       throw new NotFoundException('File not found');
     }
 
-    file.isDeleted = true;
-    await this.fileRepository.save(file);
+    await this.prisma.file.update({
+      where: { id: fileId },
+      data: { isDeleted: true },
+    });
 
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user) {
-      user.storageUsed = Math.max(0, user.storageUsed - file.size);
-      await this.userRepository.save(user);
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { storageUsed: Math.max(0, user.storageUsed - file.size) },
+      });
     }
 
     await this.r2Service.deleteFile(file.storageKey);
   }
 
-  async findFileByHash(hash: string): Promise<File | null> {
-    return this.fileRepository.findOne({
+  async findFileByHash(hash: string): Promise<any | null> {
+    return this.prisma.file.findFirst({
       where: { hash, isDeleted: false },
     });
   }
 
   async incrementDownloadCount(fileId: string): Promise<void> {
-    await this.fileRepository.increment({ id: fileId }, 'downloadCount', 1);
+    await this.prisma.file.update({
+      where: { id: fileId },
+      data: { downloadCount: { increment: 1 } },
+    });
   }
 
-  async getExpiredFiles(): Promise<File[]> {
-    return this.fileRepository.find({
+  async getExpiredFiles(): Promise<any[]> {
+    return this.prisma.file.findMany({
       where: {
         isDeleted: false,
-        expiryDate: LessThan(new Date()),
+        expiryDate: { lt: new Date() },
         isPermanent: false,
       },
     });
   }
 
-  async cleanupFile(file: File): Promise<void> {
-    file.isDeleted = true;
-    await this.fileRepository.save(file);
+  async cleanupFile(file: any): Promise<void> {
+    await this.prisma.file.update({
+      where: { id: file.id },
+      data: { isDeleted: true },
+    });
 
-    const user = await this.userRepository.findOne({ where: { id: file.userId } });
+    const user = await this.prisma.user.findUnique({ where: { id: file.userId } });
     if (user) {
-      user.storageUsed = Math.max(0, user.storageUsed - file.size);
-      await this.userRepository.save(user);
+      await this.prisma.user.update({
+        where: { id: file.userId },
+        data: { storageUsed: Math.max(0, user.storageUsed - file.size) },
+      });
     }
 
     await this.r2Service.deleteFile(file.storageKey);

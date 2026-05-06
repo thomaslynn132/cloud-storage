@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { fileService } from '@/services/file.service';
 
 export default function FileDetail() {
   const router = useRouter();
-  const { id } = router.query || {};
+  const params = useParams();
+  const id = params?.id as string;
   const [fileInfo, setFileInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [adViewed, setAdViewed] = useState(false);

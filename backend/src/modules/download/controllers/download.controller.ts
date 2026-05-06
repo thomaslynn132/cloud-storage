@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Param, Body, Query, Req, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { DownloadService } from './services/download.service';
-import { VerifyAdDto } from './dto/download.dto';
+import { DownloadService } from '../services/download.service';
+import { VerifyAdDto } from '../dto/download.dto';
 
 @ApiTags('download')
 @Controller('files')

@@ -2,8 +2,8 @@ import { Controller, Post, Body, Get, UseGuards, Request, UseInterceptors, Uploa
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../../auth/guards/admin.guard';
-import { PaymentService } from './services/payment.service';
-import { CreateSubscriptionDto, UpdatePaymentStatusDto } from './dto/payment.dto';
+import { PaymentService } from '../services/payment.service';
+import { CreateSubscriptionDto, UpdatePaymentStatusDto } from '../dto/payment.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('payments')

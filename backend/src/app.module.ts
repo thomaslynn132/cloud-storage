@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { typeOrmConfig } from './config/typeorm.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { FileModule } from './modules/file/file.module';
@@ -15,15 +13,13 @@ import { redisConfig } from './config/redis.config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { PrismaService } from './services/prisma.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
-    }),
-    TypeOrmModule.forRootAsync({
-      useFactory: () => typeOrmConfig,
     }),
     BullModule.forRootAsync({
       useFactory: () => ({
@@ -51,6 +47,7 @@ import { ThrottlerGuard } from '@nestjs/throttler';
     AdminModule,
   ],
   providers: [
+    PrismaService,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String    @id(map: "PK_a3ffb1c0c8416b9fc6f907b7433") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  email                 String    @unique(map: "UQ_97672ac88f789774dd47f7c8be3") @db.VarChar
+  passwordHash          String    @db.VarChar
+  planType              String    @default("free") @db.VarChar
+  storageUsed           Int       @default(0)
+  subscriptionExpiresAt DateTime? @db.Timestamp(6)
+  isAdmin               Boolean   @default(false)
+  createdAt             DateTime  @default(now()) @db.Timestamp(6)
+  files                 File[]
+  payments              Payment[]
+
+  @@map("users")
+}
+
+model File {
+  id            String     @id(map: "PK_6c16b9093a142e0e7613b04a3d9") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId        String     @db.Uuid
+  fileName      String     @db.VarChar
+  size          Int
+  hash          String     @db.VarChar
+  storageKey    String     @db.VarChar
+  isPermanent   Boolean    @default(false)
+  expiryDate    DateTime?  @db.Timestamp(6)
+  downloadCount Int        @default(0)
+  isDeleted     Boolean    @default(false)
+  createdAt     DateTime   @default(now()) @db.Timestamp(6)
+  user          User       @relation(fields: [userId], references: [id])
+  downloads     Download[]
+
+  @@index([expiryDate], map: "IDX_160c938d55e612062680e980a1")
+  @@index([hash], map: "IDX_b7fd70eedc0d46577c63639855")
+  @@map("files")
+}
+
+model Payment {
+  id                   String   @id(map: "PK_197ab7af18c93fbb0c9b28b4a59") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId               String   @db.Uuid
+  amount               Int
+  plan                 String   @db.VarChar
+  stripeSubscriptionId String   @db.VarChar
+  expiresAt            DateTime @db.Timestamp(6)
+  status               String   @default("active") @db.VarChar
+  createdAt            DateTime @default(now()) @db.Timestamp(6)
+  user                 User     @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "IDX_d35cb3c13a18e1ea1705b2817b")
+  @@map("payments")
+}
+
+model Download {
+  id        String   @id(map: "PK_60f7fa2aa9b7138737ab957a436") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  fileId    String   @db.Uuid
+  ipAddress String   @db.VarChar
+  adShown   Boolean  @default(false)
+  adClicked Boolean  @default(false)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  file      File     @relation(fields: [fileId], references: [id])
+
+  @@index([fileId], map: "IDX_3431986f75332fab4cc0d7ddbd")
+  @@map("downloads")
+}

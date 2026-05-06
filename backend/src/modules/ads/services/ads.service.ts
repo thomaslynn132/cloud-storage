@@ -1,48 +1,39 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Download } from '../../entities/download.entity';
+import { PrismaService } from '../../../services/prisma.service';
 
 @Injectable()
 export class AdsService {
   private readonly logger = new Logger(AdsService.name);
 
   constructor(
-    @InjectRepository(Download)
-    private downloadRepository: Repository<Download>,
+    private prisma: PrismaService,
   ) {}
 
   async recordImpression(fileId: string, ipAddress: string): Promise<void> {
-    await this.downloadRepository.update(
-      { fileId, ipAddress, adShown: true },
-      { adShown: true }
-    );
+    await this.prisma.download.updateMany({
+      where: { fileId, ipAddress, adShown: true },
+      data: { adShown: true },
+    });
   }
 
   async recordClick(fileId: string, ipAddress: string): Promise<void> {
-    await this.downloadRepository.update(
-      { fileId, ipAddress },
-      { adClicked: true }
-    );
+    await this.prisma.download.updateMany({
+      where: { fileId, ipAddress },
+      data: { adClicked: true },
+    });
   }
 
   async getAdStats(fileId?: string) {
-    const query = this.downloadRepository.createQueryBuilder('download');
-    
-    if (fileId) {
-      query.where('download.fileId = :fileId', { fileId });
-    }
+    const impressions = await this.prisma.download.count({
+      where: fileId ? { fileId } : undefined,
+    });
 
-    const impressions = await query.getCount();
-
-    const clickQuery = this.downloadRepository.createQueryBuilder('download')
-      .where('download.adClicked = :clicked', { clicked: true });
-    
-    if (fileId) {
-      clickQuery.andWhere('download.fileId = :fileId', { fileId });
-    }
-
-    const clicks = await clickQuery.getCount();
+    const clicks = await this.prisma.download.count({
+      where: {
+        ...(fileId && { fileId }),
+        adClicked: true,
+      },
+    });
 
     return {
       impressions,

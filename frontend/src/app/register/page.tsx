@@ -33,7 +33,7 @@ export default function Register() {
       const data = await authService.register(email, password, userType);
       authService.setTokens(data.accessToken, data.refreshToken, { email });
       router.push('/dashboard');
-    } catch (err: any) => {
+    } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);

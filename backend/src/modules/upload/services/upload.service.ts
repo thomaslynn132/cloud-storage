@@ -1,15 +1,16 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { R2Service } from '../../../services/r2.service';
 import { HashService } from '../../../services/hash.service';
 import { FileService } from '../../file/services/file.service';
 import { InitUploadDto, CompleteUploadDto } from '../dto/upload.dto';
 import { appConfig } from '../../../config/app.config';
 import { PrismaService } from '../../../services/prisma.service';
+import { PlanType } from '@prisma/client';
 
 @Injectable()
 export class UploadService {
   private readonly logger = new Logger(UploadService.name);
-  private uploadSessions: Map<string, { chunks: number; storageKey: string; userId: string }> = new Map();
+  private uploadSessions: Map<string, { chunks: number; storageKey: string; userId: string; fileSize: number }> = new Map();
 
   constructor(
     private prisma: PrismaService,
@@ -24,9 +25,26 @@ export class UploadService {
       throw new NotFoundException('User not found');
     }
 
-    const storageLimit = this.getStorageLimit(user.planType);
-    if (user.storageUsed + dto.fileSize > storageLimit) {
+    // Check if user is uploader
+    if (user.userType !== 'UPLOADER') {
+      throw new ForbiddenException('Only uploaders can upload files');
+    }
+
+    // Check storage limit
+    const storageLimit = BigInt(user.storageLimit);
+    const storageUsed = BigInt(user.storageUsed);
+    const fileSize = BigInt(dto.fileSize);
+
+    if (storageUsed + fileSize > storageLimit) {
       throw new Error('Storage limit exceeded');
+    }
+
+    // Check duration limit for free users
+    if (user.planType === PlanType.FREE && user.durationLimit > 0) {
+      const fileDuration = dto.duration || 0;
+      if (fileDuration > user.durationLimit) {
+        throw new Error(`File duration exceeds limit for free plan`);
+      }
     }
 
     const existingFile = await this.fileService.findFileByHash(dto.fileHash);
@@ -38,6 +56,7 @@ export class UploadService {
         dto.fileHash,
         existingFile.storageKey,
         dto.isPermanent || false,
+        dto.duration,
       );
       return {
         fileId: file.id,
@@ -55,6 +74,7 @@ export class UploadService {
       chunks: 0,
       storageKey,
       userId,
+      fileSize: dto.fileSize,
     });
 
     return {
@@ -71,26 +91,19 @@ export class UploadService {
       throw new Error('Invalid upload session');
     }
 
+    const fileName = dto.storageKey.split('/').pop();
     const file = await this.fileService.createFile(
       userId,
-      dto.storageKey.split('/').pop(),
-      0,
+      fileName,
+      session.fileSize,
       '',
       dto.storageKey,
       false,
+      0, // duration will be updated after processing
     );
 
     this.uploadSessions.delete(dto.uploadId);
 
     return { fileId: file.id, message: 'Upload completed successfully' };
-  }
-
-  private getStorageLimit(planType: string): number {
-    switch (planType) {
-      case 'paid':
-        return appConfig.proStorageLimit;
-      default:
-        return appConfig.freeStorageLimit;
-    }
   }
 }

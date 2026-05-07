@@ -3,8 +3,10 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { AdminGuard } from '../../auth/guards/admin.guard';
 import { PaymentService } from '../services/payment.service';
-import { CreateSubscriptionDto, UpdatePaymentStatusDto } from '../dto/payment.dto';
+import { CreatePaymentDto, UpdatePaymentStatusDto } from '../dto/payment.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 
 @ApiTags('payments')
 @Controller('payments')
@@ -13,26 +15,40 @@ export class PaymentController {
 
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Request subscription (upload payment proof)' })
+  @ApiOperation({ summary: 'Create payment request with proof attachment' })
   @ApiResponse({ status: 201, description: 'Payment request created' })
-  @Post('subscribe')
-  @UseInterceptors(FileInterceptor('paymentProof'))
+  @Post('request')
+  @UseInterceptors(
+    FileInterceptor('paymentProof', {
+      storage: diskStorage({
+        destination: './uploads/payment-proofs',
+        filename: (req, file, cb) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, uniqueSuffix + extname(file.originalname));
+        },
+      }),
+    }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        plan: { type: 'string', enum: ['basic', 'pro'] },
+        pricingType: { type: 'string', enum: ['STORAGE_GB', 'RETENTION_DAYS'] },
+        units: { type: 'number' },
         amount: { type: 'number' },
+        retentionDays: { type: 'number' },
+        storageBytes: { type: 'string' },
         transactionRef: { type: 'string' },
         paymentProof: { type: 'string', format: 'binary' },
       },
     },
   })
-  async subscribe(@Request() req, @Body() dto: CreateSubscriptionDto, @UploadedFile() file: Express.Multer.File) {
-    // In production, save file to R2 or local storage
-    const paymentProof = file ? `data:${file.mimetype};base64,${file.buffer.toString('base64')}` : dto.paymentProof;
-    return this.paymentService.requestSubscription(req.user.userId, { ...dto, paymentProof });
+  async createPayment(@Request() req, @Body() dto: CreatePaymentDto, @UploadedFile() file: Express.Multer.File) {
+    if (file) {
+      dto.paymentProof = file.path;
+    }
+    return this.paymentService.createPaymentRequest(req.user.userId, dto);
   }
 
   @UseGuards(JwtAuthGuard, AdminGuard)
@@ -60,5 +76,14 @@ export class PaymentController {
   @Get('history')
   async getPaymentHistory(@Request() req) {
     return this.paymentService.getUserPayments(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get available pricing rules' })
+  @ApiResponse({ status: 200, description: 'Returns pricing rules' })
+  @Get('pricing-rules')
+  async getPricingRules() {
+    return this.paymentService.getPricingRules();
   }
 }

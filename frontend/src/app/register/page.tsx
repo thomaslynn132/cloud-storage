@@ -4,11 +4,23 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { authService } from '@/services/auth.service';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function Register() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [userType, setUserType] = useState('UPLOADER');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -18,10 +30,10 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const data = await authService.register(email, password);
+      const data = await authService.register(email, password, userType);
       authService.setTokens(data.accessToken, data.refreshToken, { email });
       router.push('/dashboard');
-    } catch (err: any) {
+    } catch (err: any) => {
       setError(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
@@ -30,42 +42,53 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
-        <h2 className="text-3xl font-bold text-center">Create Account</h2>
-        {error && <div className="bg-red-100 text-red-700 p-3 rounded">{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full px-3 py-2 border rounded"
-          />
-          <input
-            type="password"
-            placeholder="Password (min 8 chars)"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={8}
-            className="w-full px-3 py-2 border rounded"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Creating...' : 'Create Account'}
-          </button>
-        </form>
-        <p className="text-center">
-          Already have an account?{' '}
-          <Link href="/login" className="text-blue-600 hover:underline">
-            Sign In
-          </Link>
-        </p>
-      </div>
+      <Card className="max-w-md w-full">
+        <CardHeader>
+          <CardTitle className="text-3xl font-bold text-center">Create Account</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <Input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <Input
+              type="password"
+              placeholder="Password (min 8 chars)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={8}
+            />
+            <Select value={userType} onValueChange={setUserType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select account type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="UPLOADER">Uploader (can upload files)</SelectItem>
+                <SelectItem value="DOWNLOADER">Downloader (can only download)</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? 'Creating...' : 'Create Account'}
+            </Button>
+          </form>
+          <p className="text-center text-sm text-muted-foreground">
+            Already have an account?{' '}
+            <Link href="/login" className="text-primary hover:underline">
+              Sign In
+            </Link>
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

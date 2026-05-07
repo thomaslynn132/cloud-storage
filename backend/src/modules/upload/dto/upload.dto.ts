@@ -11,6 +11,10 @@ export class InitUploadDto {
   fileHash: string;
 
   @IsOptional()
+  @IsNumber()
+  duration?: number; // in seconds, for media files
+
+  @IsOptional()
   isPermanent?: boolean;
 }
 
@@ -20,4 +24,8 @@ export class CompleteUploadDto {
 
   @IsString()
   storageKey: string;
+
+  @IsOptional()
+  @IsNumber()
+  duration?: number; // actual duration after processing
 }

@@ -38,7 +38,7 @@ export class DownloadService {
     };
   }
 
-  async verifyAdView(fileId: string, ipAddress: string): Promise<{ adToken: string; downloadUrl: string }> {
+  async verifyAdView(fileId: string, ipAddress: string, userAgent?: string, userId?: string): Promise<{ downloadToken: string; downloadUrl: string }> {
     const file = await this.prisma.file.findUnique({
       where: { id: fileId, isDeleted: false },
     });
@@ -47,22 +47,31 @@ export class DownloadService {
       throw new NotFoundException('File not found');
     }
 
+    if (file.expiryDate && file.expiryDate < new Date() && !file.isPermanent) {
+      throw new BadRequestException('File has expired');
+    }
+
+    // Record the ad view
     await this.prisma.download.create({
       data: {
         fileId: file.id,
+        userId,
         ipAddress,
+        userAgent,
         adShown: true,
       },
     });
 
-    const adToken = this.signedUrlService.generateAdToken(fileId, ipAddress);
+    // Generate download token
     const downloadToken = this.signedUrlService.generateDownloadToken(fileId, ipAddress);
 
+    // Generate signed download URL
     const downloadUrl = await this.r2Service.getSignedDownloadUrl(file.storageKey, 300);
 
+    // Increment download count
     await this.fileService.incrementDownloadCount(fileId);
 
-    return { adToken, downloadUrl };
+    return { downloadToken, downloadUrl };
   }
 
   async getDownloadUrl(token: string, ipAddress: string): Promise<string> {
@@ -81,9 +90,26 @@ export class DownloadService {
         throw new NotFoundException('File not found');
       }
 
+      if (file.expiryDate && file.expiryDate < new Date() && !file.isPermanent) {
+        throw new BadRequestException('File has expired');
+      }
+
       return this.r2Service.getSignedDownloadUrl(file.storageKey, 300);
-    } catch {
+    } catch (error) {
       throw new BadRequestException('Invalid or expired download token');
+    }
+  }
+
+  async recordDownload(token: string, ipAddress: string): Promise<void> {
+    try {
+      const payload = this.signedUrlService.verifyDownloadToken(token);
+      
+      await this.prisma.download.updateMany({
+        where: { fileId: payload.fileId, ipAddress },
+        data: { downloaded: true },
+      });
+    } catch {
+      // Ignore errors for recording
     }
   }
 }

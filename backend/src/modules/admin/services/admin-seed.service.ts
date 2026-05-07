@@ -2,6 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { appConfig } from '../../../config/app.config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../../services/prisma.service';
+import { UserType, PlanType } from '@prisma/client';
 
 @Injectable()
 export class AdminSeedService implements OnApplicationBootstrap {
@@ -17,7 +18,7 @@ export class AdminSeedService implements OnApplicationBootstrap {
 
   private async seedAdmin() {
     const existingAdmin = await this.prisma.user.findFirst({
-      where: { isAdmin: true },
+      where: { userType: UserType.ADMIN },
     });
 
     if (existingAdmin) {
@@ -30,8 +31,9 @@ export class AdminSeedService implements OnApplicationBootstrap {
       data: {
         email: appConfig.adminEmail,
         passwordHash,
-        planType: 'paid',
-        isAdmin: true,
+        userType: UserType.ADMIN,
+        planType: PlanType.PAID,
+        storageLimit: BigInt(0), // Admins don't need storage
       },
     });
 

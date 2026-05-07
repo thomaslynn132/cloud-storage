@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
 import { fileService } from '@/services/file.service';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function FileDetail() {
   const router = useRouter();
@@ -54,52 +57,53 @@ export default function FileDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="max-w-md w-full bg-white rounded-lg shadow p-8">
-        <h2 className="text-2xl font-semibold mb-4">{fileInfo.fileName}</h2>
-        
-        <div className="space-y-2 text-sm text-gray-600 mb-6">
-          <p>Size: {(fileInfo.size / (1024 * 1024)).toFixed(2)} MB</p>
-          <p>Downloads: {fileInfo.downloadCount}</p>
-        </div>
-
-        {!adViewed ? (
-          <>
-            <div className="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
-              <p className="text-yellow-800 text-sm">
-                Please view the advertisement below to unlock download
-              </p>
-            </div>
-            
-            <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded p-8 text-center mb-4">
-              <p className="text-gray-500">Advertisement Space</p>
-            </div>
-
-            <button
-              onClick={handleVerifyAd}
-              className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              I've Viewed the Ad - Get Download Link
-            </button>
-          </>
-        ) : (
-          <div className="text-center space-y-4">
-            {countdown > 0 ? (
-              <p className="text-gray-600">Your download will start in {countdown} seconds...</p>
-            ) : (
-              <>
-                <p className="text-green-600 font-medium">Download ready!</p>
-                <a
-                  href={downloadUrl}
-                  download
-                  className="inline-block py-2 px-6 bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  Download Now
-                </a>
-              </>
-            )}
+      <Card className="max-w-md w-full">
+        <CardHeader>
+          <CardTitle>{fileInfo.fileName}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 text-sm text-gray-600 mb-6">
+            <p>Size: {(fileInfo.size / (1024 * 1024)).toFixed(2)} MB</p>
+            <p>Downloads: {fileInfo.downloadCount}</p>
           </div>
-        )}
-      </div>
+
+          {!adViewed ? (
+            <>
+              <Alert className="mb-4 border-yellow-200 bg-yellow-50">
+                <AlertDescription className="text-yellow-800">
+                  Please view the advertisement below to unlock download
+                </AlertDescription>
+              </Alert>
+              
+              <div className="bg-gray-100 border-2 border-dashed border-gray-300 rounded p-8 text-center mb-4">
+                <p className="text-gray-500">Advertisement Space</p>
+              </div>
+
+              <Button
+                onClick={handleVerifyAd}
+                className="w-full"
+              >
+                I've Viewed the Ad - Get Download Link
+              </Button>
+            </>
+          ) : (
+            <div className="text-center space-y-4">
+              {countdown > 0 ? (
+                <p className="text-gray-600">Your download will start in {countdown} seconds...</p>
+              ) : (
+                <>
+                  <p className="text-green-600 font-medium">Download ready!</p>
+                  <Button asChild>
+                    <a href={downloadUrl} download>
+                      Download Now
+                    </a>
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

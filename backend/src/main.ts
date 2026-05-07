@@ -7,12 +7,24 @@ import { ContentDistributionMiddleware } from './middleware/content-distribution
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.enableCors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
   }));
+
+  // Handle BigInt serialization
+  (BigInt.prototype as any).toJSON = function () {
+    return this.toString();
+  };
 
   const config = new DocumentBuilder()
     .setTitle('File Hosting Platform API')

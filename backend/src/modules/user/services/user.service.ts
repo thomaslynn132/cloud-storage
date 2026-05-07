@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../services/prisma.service';
+import { PlanType } from '@prisma/client';
 
 @Injectable()
 export class UserService {
@@ -12,7 +13,7 @@ export class UserService {
   async getUserProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, planType: true, storageUsed: true, createdAt: true, subscriptionExpiresAt: true },
+      select: { id: true, email: true, planType: true, storageUsed: true, createdAt: true, subscriptionExpiresAt: true, userType: true },
     });
 
     if (!user) {
@@ -28,12 +29,18 @@ export class UserService {
       throw new Error('User not found');
     }
 
-    const storageLimit = user.planType === 'paid' ? 500 * 1024 * 1024 * 1024 : 5 * 1024 * 1024 * 1024;
+    const storageLimit = user.planType === PlanType.PAID 
+      ? BigInt(500 * 1024 * 1024 * 1024) 
+      : BigInt(user.storageLimit);
+    
+    const used = BigInt(user.storageUsed);
+    const percentage = storageLimit > 0n ? Number((used * 100n) / storageLimit) : 0;
     
     return {
       used: user.storageUsed,
-      limit: storageLimit,
-      percentage: (user.storageUsed / storageLimit) * 100,
+      limit: storageLimit.toString(),
+      percentage,
+      planType: user.planType,
     };
   }
 }

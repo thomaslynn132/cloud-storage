@@ -3,6 +3,7 @@ import { R2Service } from '../../../services/r2.service';
 import { HashService } from '../../../services/hash.service';
 import { appConfig } from '../../../config/app.config';
 import { PrismaService } from '../../../services/prisma.service';
+import { User, PlanType } from '@prisma/client';
 
 @Injectable()
 export class FileService {
@@ -14,24 +15,36 @@ export class FileService {
     private hashService: HashService,
   ) {}
 
-  async createFile(userId: string, fileName: string, size: number, hash: string, storageKey: string, isPermanent: boolean = false): Promise<any> {
+  async createFile(userId: string, fileName: string, size: number, hash: string, storageKey: string, isPermanent: boolean = false, duration: number = 0): Promise<any> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    const storageLimit = this.getStorageLimit(user.planType);
-    if (user.storageUsed + size > storageLimit) {
+    // Check storage limit using BigInt
+    const storageLimit = BigInt(user.storageLimit);
+    const storageUsed = BigInt(user.storageUsed);
+    const fileSize = BigInt(size);
+
+    if (storageUsed + fileSize > storageLimit) {
       throw new Error('Storage limit exceeded');
     }
 
-    const expiryDate = isPermanent ? null : new Date(Date.now() + appConfig.freeFileExpiryDays * 24 * 60 * 60 * 1000);
+    // Calculate expiry date based on user's paid retention or free default
+    let expiryDate: Date | null = null;
+    if (!isPermanent) {
+      const retentionDays = user.planType === PlanType.FREE 
+        ? appConfig.freeFileExpiryDays 
+        : 365; // Default 1 year for paid, can be overridden by payment
+      expiryDate = new Date(Date.now() + retentionDays * 24 * 60 * 60 * 1000);
+    }
 
     const file = await this.prisma.file.create({
       data: {
         userId,
         fileName,
         size,
+        duration,
         hash,
         storageKey,
         isPermanent,
@@ -39,9 +52,10 @@ export class FileService {
       },
     });
 
+    // Update user storage used (keep as BigInt in database)
     await this.prisma.user.update({
       where: { id: userId },
-      data: { storageUsed: { increment: size } },
+      data: { storageUsed: { increment: BigInt(size) } },
     });
 
     return file;
@@ -61,9 +75,16 @@ export class FileService {
   }
 
   async getUserFiles(userId: string): Promise<any[]> {
+    // If userId is 'all', return all files (admin only)
+    const where: any = { isDeleted: false };
+    if (userId !== 'all') {
+      where.userId = userId;
+    }
+    
     return this.prisma.file.findMany({
-      where: { userId, isDeleted: false },
+      where,
       orderBy: { createdAt: 'desc' },
+      include: { user: { select: { email: true, userType: true } } },
     });
   }
 
@@ -81,15 +102,18 @@ export class FileService {
       data: { isDeleted: true },
     });
 
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (user) {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { storageUsed: Math.max(0, user.storageUsed - file.size) },
-      });
-    }
+    // Update user storage used (decrement as BigInt)
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { storageUsed: { decrement: BigInt(file.size) } },
+    });
 
-    await this.r2Service.deleteFile(file.storageKey);
+    // Delete from R2
+    try {
+      await this.r2Service.deleteFile(file.storageKey);
+    } catch (error) {
+      this.logger.error(`Failed to delete file from R2: ${error.message}`);
+    }
   }
 
   async findFileByHash(hash: string): Promise<any | null> {
@@ -121,23 +145,17 @@ export class FileService {
       data: { isDeleted: true },
     });
 
-    const user = await this.prisma.user.findUnique({ where: { id: file.userId } });
-    if (user) {
-      await this.prisma.user.update({
-        where: { id: file.userId },
-        data: { storageUsed: Math.max(0, user.storageUsed - file.size) },
-      });
-    }
+    // Update user storage used
+    await this.prisma.user.update({
+      where: { id: file.userId },
+      data: { storageUsed: { decrement: BigInt(file.size) } },
+    });
 
-    await this.r2Service.deleteFile(file.storageKey);
-  }
-
-  private getStorageLimit(planType: string): number {
-    switch (planType) {
-      case 'paid':
-        return appConfig.proStorageLimit;
-      default:
-        return appConfig.freeStorageLimit;
+    // Delete from R2
+    try {
+      await this.r2Service.deleteFile(file.storageKey);
+    } catch (error) {
+      this.logger.error(`Failed to delete file from R2: ${error.message}`);
     }
   }
 }

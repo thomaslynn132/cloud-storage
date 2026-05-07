@@ -6,6 +6,20 @@ import Link from 'next/link';
 import { authService } from '@/services/auth.service';
 import { fileService } from '@/services/file.service';
 import api from '@/services/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -13,6 +27,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [storageInfo, setStorageInfo] = useState({ used: 0, limit: 0, percentage: 0 });
+  const [deleteFileId, setDeleteFileId] = useState<string | null>(null);
 
   useEffect(() => {
     const currentUser = authService.getCurrentUser();
@@ -40,12 +55,12 @@ export default function Dashboard() {
   };
 
   const handleDelete = async (fileId: string) => {
-    if (!confirm('Delete this file?')) return;
     try {
       await fileService.deleteFile(fileId);
       loadData();
+      setDeleteFileId(null);
     } catch (err) {
-      alert('Failed to delete file');
+      console.error('Failed to delete file');
     }
   };
 
@@ -62,60 +77,84 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold">FileHost</h1>
           <div className="space-x-4">
-            <Link href="/upload" className="text-blue-600 hover:underline">Upload</Link>
-            <Link href="/pricing" className="text-blue-600 hover:underline">Pricing</Link>
-            <button onClick={handleLogout} className="text-red-600 hover:underline">Logout</button>
+            <Button variant="link" asChild>
+              <Link href="/upload">Upload</Link>
+            </Button>
+            <Button variant="link" asChild>
+              <Link href="/pricing">Pricing</Link>
+            </Button>
+            <Button variant="link" className="text-red-600" onClick={handleLogout}>
+              Logout
+            </Button>
           </div>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto p-8">
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Storage Usage</h2>
-          <div className="w-full bg-gray-200 rounded-full h-4">
-            <div
-              className="bg-blue-600 h-4 rounded-full"
-              style={{ width: `${Math.min(storageInfo.percentage, 100)}%` }}
-            />
-          </div>
-          <p className="mt-2 text-sm text-gray-600">
-            {(storageInfo.used / (1024 * 1024 * 1024)).toFixed(2)} GB / {(storageInfo.limit / (1024 * 1024 * 1024)).toFixed(0)} GB
-          </p>
-        </div>
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Storage Usage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Progress value={Math.min(storageInfo.percentage, 100)} className="w-full" />
+            <p className="mt-2 text-sm text-gray-600">
+              {(storageInfo.used / (1024 * 1024 * 1024)).toFixed(2)} GB / {(storageInfo.limit / (1024 * 1024 * 1024)).toFixed(0)} GB
+            </p>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Your Files</h2>
-            <Link href="/upload" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-              Upload New File
-            </Link>
-          </div>
-
-          {files.length === 0 ? (
-            <p className="text-gray-500">No files yet. Upload your first file!</p>
-          ) : (
-            <div className="space-y-4">
-              {files.map((file: any) => (
-                <div key={file.id} className="border p-4 rounded flex justify-between items-center">
-                  <div>
-                    <h3 className="font-medium">{file.fileName}</h3>
-                    <p className="text-sm text-gray-500">
-                      {(file.size / (1024 * 1024)).toFixed(2)} MB • {file.downloadCount} downloads
-                    </p>
-                  </div>
-                  <div className="space-x-2">
-                    <Link href={`/file/${file.id}`} className="text-blue-600 hover:underline">
-                      Share
-                    </Link>
-                    <button onClick={() => handleDelete(file.id)} className="text-red-600 hover:underline">
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle>Your Files</CardTitle>
+              <Button asChild>
+                <Link href="/upload">Upload New File</Link>
+              </Button>
             </div>
-          )}
-        </div>
+          </CardHeader>
+          <CardContent>
+            {files.length === 0 ? (
+              <p className="text-gray-500">No files yet. Upload your first file!</p>
+            ) : (
+              <div className="space-y-4">
+                {files.map((file: any) => (
+                  <div key={file.id} className="border p-4 rounded flex justify-between items-center">
+                    <div>
+                      <h3 className="font-medium">{file.fileName}</h3>
+                      <p className="text-sm text-gray-500">
+                        {(file.size / (1024 * 1024)).toFixed(2)} MB • {file.downloadCount} downloads
+                      </p>
+                    </div>
+                    <div className="space-x-2">
+                      <Button variant="link" asChild>
+                        <Link href={`/file/${file.id}`}>Share</Link>
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="link" className="text-red-600">Delete</Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete File</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this file? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(file.id)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

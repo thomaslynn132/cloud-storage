@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 export default function Home() {
   return (
@@ -7,12 +9,12 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-indigo-600">FileHost</h1>
           <div className="space-x-4">
-            <Link href="/login" className="text-gray-700 hover:text-indigo-600">
-              Sign In
-            </Link>
-            <Link href="/register" className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-              Get Started
-            </Link>
+            <Button variant="link" asChild>
+              <Link href="/login">Sign In</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/register">Get Started</Link>
+            </Button>
           </div>
         </div>
       </nav>
@@ -29,34 +31,40 @@ export default function Home() {
             Free tier with ads, or upgrade for permanent storage.
           </p>
           <div className="space-x-4">
-            <Link href="/register" className="px-8 py-3 bg-indigo-600 text-white rounded-lg text-lg hover:bg-indigo-700 inline-block">
-              Start for Free
-            </Link>
-            <Link href="/pricing" className="px-8 py-3 border-2 border-indigo-600 text-indigo-600 rounded-lg text-lg hover:bg-indigo-50 inline-block">
-              View Pricing
-            </Link>
+            <Button size="lg" asChild>
+              <Link href="/register">Start for Free</Link>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <Link href="/pricing">View Pricing</Link>
+            </Button>
           </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 mt-20">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-xl font-semibold mb-3">Fast Uploads</h3>
-            <p className="text-gray-600">
-              Direct-to-cloud uploads with chunked uploading support. No bandwidth limits.
-            </p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-xl font-semibold mb-3">Global CDN</h3>
-            <p className="text-gray-600">
-              Content distributed via Cloudflare for lightning-fast downloads worldwide.
-            </p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-xl font-semibold mb-3">Secure Sharing</h3>
-            <p className="text-gray-600">
-              Share files with public links. Ad-supported free downloads.
-            </p>
-          </div>
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-xl font-semibold mb-3">Fast Uploads</h3>
+              <p className="text-gray-600">
+                Direct-to-cloud uploads with chunked uploading support. No bandwidth limits.
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-xl font-semibold mb-3">Global CDN</h3>
+              <p className="text-gray-600">
+                Content distributed via Cloudflare for lightning-fast downloads worldwide.
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-xl font-semibold mb-3">Secure Sharing</h3>
+              <p className="text-gray-600">
+                Share files with public links. Ad-supported free downloads.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>

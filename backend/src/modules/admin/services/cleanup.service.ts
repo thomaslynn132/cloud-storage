@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { FileService } from '../../file/services/file.service';
 import { PrismaService } from '../../../services/prisma.service';
+import { PlanType } from '@prisma/client';
 
 @Injectable()
 export class CleanupService {
@@ -40,7 +41,7 @@ export class CleanupService {
     this.logger.log('Checking expired subscriptions...');
     
     const users = await this.prisma.user.findMany({
-      where: { planType: 'paid' },
+      where: { planType: PlanType.PAID },
     });
 
     for (const user of users) {
@@ -48,7 +49,7 @@ export class CleanupService {
         await this.prisma.user.update({
           where: { id: user.id },
           data: {
-            planType: 'free',
+            planType: PlanType.FREE,
             subscriptionExpiresAt: null,
           },
         });

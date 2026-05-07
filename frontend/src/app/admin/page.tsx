@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { paymentService } from '@/services/payment.service';
 import { authService } from '@/services/auth.service';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 export default function Admin() {
   const router = useRouter();
@@ -46,6 +49,11 @@ export default function Admin() {
     }
   };
 
+  const handleLogout = () => {
+    authService.logout();
+    router.push('/login');
+  };
+
   if (loading) return <div className="p-8">Loading...</div>;
 
   return (
@@ -53,9 +61,9 @@ export default function Admin() {
       <nav className="bg-white shadow p-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold">Admin Panel</h1>
-          <button onClick={() => { authService.logout(); router.push('/login'); }} className="text-red-600 hover:underline">
+          <Button variant="link" className="text-red-600" onClick={handleLogout}>
             Logout
-          </button>
+          </Button>
         </div>
       </nav>
 
@@ -67,33 +75,37 @@ export default function Admin() {
         ) : (
           <div className="space-y-4">
             {payments.map((payment: any) => (
-              <div key={payment.id} className="bg-white rounded-lg shadow p-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium">{payment.user?.email}</h3>
-                    <p className="text-sm text-gray-500">Plan: {payment.plan}</p>
-                    <p className="text-sm text-gray-500">Amount: ${payment.amount / 100}</p>
-                    <p className="text-sm text-gray-500">Ref: {payment.stripeSubscriptionId}</p>
-                    <p className="text-xs text-gray-400 mt-2">
-                      {new Date(payment.createdAt).toLocaleString()}
-                    </p>
+              <Card key={payment.id}>
+                <CardContent className="pt-6">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-medium">{payment.user?.email}</h3>
+                      <p className="text-sm text-gray-500">Plan: {payment.plan}</p>
+                      <p className="text-sm text-gray-500">Amount: ${payment.amount / 100}</p>
+                      <p className="text-sm text-gray-500">Ref: {payment.stripeSubscriptionId}</p>
+                      <Badge variant="secondary" className="mt-2">
+                        {new Date(payment.createdAt).toLocaleString()}
+                      </Badge>
+                    </div>
+                    <div className="space-x-2">
+                      <Button
+                        onClick={() => handleConfirm(payment.id, 'approved')}
+                        variant="default"
+                        size="sm"
+                      >
+                        Approve
+                      </Button>
+                      <Button
+                        onClick={() => handleConfirm(payment.id, 'rejected')}
+                        variant="destructive"
+                        size="sm"
+                      >
+                        Reject
+                      </Button>
+                    </div>
                   </div>
-                  <div className="space-x-2">
-                    <button
-                      onClick={() => handleConfirm(payment.id, 'approved')}
-                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleConfirm(payment.id, 'rejected')}
-                      className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}

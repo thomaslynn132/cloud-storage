@@ -1,8 +1,6 @@
 import { Injectable, Logger, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { File } from '../../entities/file.entity';
+import { PrismaService } from '../services/prisma.service';
 
 @Injectable()
 export class ContentDistributionMiddleware implements NestMiddleware {
@@ -13,8 +11,7 @@ export class ContentDistributionMiddleware implements NestMiddleware {
   ];
 
   constructor(
-    @InjectRepository(File)
-    private fileRepository: Repository<File>,
+    private prisma: PrismaService,
   ) {}
 
   use(req: Request, res: Response, next: NextFunction) {

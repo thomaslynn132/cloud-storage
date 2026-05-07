@@ -1,8 +1,8 @@
 import api from './api';
 
 export const authService = {
-  async register(email: string, password: string) {
-    const { data } = await api.post('/auth/register', { email, password });
+  async register(email: string, password: string, userType: string = 'UPLOADER') {
+    const { data } = await api.post('/auth/register', { email, password, userType });
     return data;
   },
 

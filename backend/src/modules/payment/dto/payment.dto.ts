@@ -1,17 +1,56 @@
-import { IsString, IsNumber, IsOptional } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsEnum, Min, Max } from 'class-validator';
+import { PaymentType, PricingType } from '@prisma/client';
 
-export class CreateSubscriptionDto {
-  @IsString()
-  plan: 'basic' | 'pro';
+export class CreatePaymentDto {
+  @IsEnum(PaymentType)
+  @IsOptional()
+  paymentType?: PaymentType;
+
+  @IsEnum(PricingType)
+  pricingType: PricingType;
 
   @IsNumber()
-  amount: number;
+  @Min(1)
+  units: number; // GB for storage or days for retention
 
-  @IsString()
-  transactionRef: string;
+  @IsNumber()
+  amount: number; // in cents
 
+  @IsOptional()
+  @IsNumber()
+  retentionDays?: number;
+
+  @IsOptional()
   @IsString()
-  paymentProof: string; // Base64 image or file path
+  storageBytes?: string; // BigInt as string
+
+  @IsOptional()
+  @IsString()
+  transactionRef?: string;
+
+  @IsOptional()
+  @IsString()
+  paymentProof?: string; // file path to uploaded proof image
+}
+
+export class CreatePricingRuleDto {
+  @IsString()
+  name: string;
+
+  @IsEnum(PricingType)
+  type: PricingType;
+
+  @IsNumber()
+  @Min(1)
+  pricePerUnit: number; // in cents
+
+  @IsNumber()
+  @Min(1)
+  minUnits: number;
+
+  @IsOptional()
+  @IsNumber()
+  maxUnits?: number;
 }
 
 export class UpdatePaymentStatusDto {
@@ -19,7 +58,7 @@ export class UpdatePaymentStatusDto {
   paymentId: string;
 
   @IsString()
-  status: 'approved' | 'rejected';
+  status: 'approved' | 'rejected' | 'pending';
 
   @IsOptional()
   @IsString()

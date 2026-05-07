@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { File } from '../entities/file.entity';
+import { PrismaService } from './prisma.service';
 
 @Injectable()
 export class CostManagementService {
@@ -13,8 +11,7 @@ export class CostManagementService {
   private readonly COST_PER_DOWNLOAD_OPERATION = 0.0001 / 1000; // $0.0001 per 1000
 
   constructor(
-    @InjectRepository(File)
-    private fileRepository: Repository<File>,
+    private prisma: PrismaService,
   ) {}
 
   async calculateStorageCost(fileSize: number): Promise<number> {
@@ -32,7 +29,7 @@ export class CostManagementService {
     operations: number;
     total: number;
   }> {
-    const files = await this.fileRepository.find({
+    const files = await this.prisma.file.findMany({
       where: { isDeleted: false },
     });
 

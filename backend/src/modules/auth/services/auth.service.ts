@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { RegisterDto, LoginDto } from '../dto/auth.dto';
 import { jwtConfig } from '../../../config/jwt.config';
 import { PrismaService } from '../../../services/prisma.service';
+import { UserType, PlanType } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -21,10 +22,18 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
+    const userType = dto.userType || UserType.UPLOADER;
+    
+    // Set defaults based on user type
+    const storageLimit = userType === UserType.UPLOADER ? 25 * 1024 * 1024 * 1024 : 0; // 25GB for uploaders
+    
     const user = await this.prisma.user.create({
       data: {
         email: dto.email,
         passwordHash,
+        userType,
+        planType: PlanType.FREE,
+        storageLimit,
       },
     });
 

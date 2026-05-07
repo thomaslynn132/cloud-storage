@@ -7,65 +7,131 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserType {
+  ADMIN
+  UPLOADER
+  DOWNLOADER
+}
+
+enum PlanType {
+  FREE
+  PAID
+}
+
+enum PaymentType {
+  DURATION
+  STORAGE
+  SUBSCRIPTION
+}
+
+enum PricingType {
+  STORAGE_GB      // Price per GB of storage
+  RETENTION_DAYS   // Price per day of file retention
+}
+
 model User {
-  id                    String    @id(map: "PK_a3ffb1c0c8416b9fc6f907b7433") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  email                 String    @unique(map: "UQ_97672ac88f789774dd47f7c8be3") @db.VarChar
-  passwordHash          String    @db.VarChar
-  planType              String    @default("free") @db.VarChar
-  storageUsed           Int       @default(0)
-  subscriptionExpiresAt DateTime? @db.Timestamp(6)
-  isAdmin               Boolean   @default(false)
-  createdAt             DateTime  @default(now()) @db.Timestamp(6)
+  id                    String     @id @default(uuid()) @db.Uuid
+  email                 String     @unique @db.VarChar
+  passwordHash          String     @db.VarChar
+  userType              UserType   @default(UPLOADER)
+  planType              PlanType   @default(FREE)
+  storageUsed           BigInt     @default(0) // in bytes
+  storageLimit          BigInt     @default(26843545600) // 25GB in bytes for free uploaders
+  durationLimit         Int        @default(0) // in seconds, 0 means no limit for free
+  subscriptionExpiresAt DateTime?
+  isActive              Boolean    @default(true)
+  createdAt             DateTime   @default(now()) @db.Timestamp(6)
+  updatedAt             DateTime   @updatedAt @db.Timestamp(6)
+  
   files                 File[]
   payments              Payment[]
+  downloads             Download[]
+  createdPricingRules   PricingRule[] @relation("Creator")
 
   @@map("users")
 }
 
 model File {
-  id            String     @id(map: "PK_6c16b9093a142e0e7613b04a3d9") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  id            String     @id @default(uuid()) @db.Uuid
   userId        String     @db.Uuid
   fileName      String     @db.VarChar
-  size          Int
+  size          Int        // in bytes
+  duration      Int        @default(0) // in seconds, for media files
   hash          String     @db.VarChar
   storageKey    String     @db.VarChar
+  mimeType      String?    @db.VarChar
   isPermanent   Boolean    @default(false)
   expiryDate    DateTime?  @db.Timestamp(6)
   downloadCount Int        @default(0)
   isDeleted     Boolean    @default(false)
+  isProcessed   Boolean    @default(false)
   createdAt     DateTime   @default(now()) @db.Timestamp(6)
+  updatedAt     DateTime   @updatedAt @db.Timestamp(6)
+  
   user          User       @relation(fields: [userId], references: [id])
   downloads     Download[]
 
-  @@index([expiryDate], map: "IDX_160c938d55e612062680e980a1")
-  @@index([hash], map: "IDX_b7fd70eedc0d46577c63639855")
+  @@index([expiryDate])
+  @@index([hash])
+  @@index([userId])
   @@map("files")
 }
 
 model Payment {
-  id                   String   @id(map: "PK_197ab7af18c93fbb0c9b28b4a59") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  userId               String   @db.Uuid
-  amount               Int
-  plan                 String   @db.VarChar
-  stripeSubscriptionId String   @db.VarChar
-  expiresAt            DateTime @db.Timestamp(6)
-  status               String   @default("active") @db.VarChar
-  createdAt            DateTime @default(now()) @db.Timestamp(6)
-  user                 User     @relation(fields: [userId], references: [id])
+  id                String      @id @default(uuid()) @db.Uuid
+  userId            String      @db.Uuid
+  amount            Int         // in cents
+  paymentType       PaymentType @default(SUBSCRIPTION)
+  plan              PlanType?
+  retentionDays     Int?        // days to keep file in R2 before deletion
+  storageBytes      BigInt?     // bytes of storage purchased
+  transactionRef    String?     @db.VarChar
+  paymentProof      String?     @db.VarChar // file path to uploaded payment proof image
+  status            String      @default("pending") @db.VarChar
+  adminNote         String?     @db.VarChar
+  processedAt       DateTime?   @db.Timestamp(6)
+  expiresAt         DateTime?   @db.Timestamp(6)
+  createdAt         DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime    @updatedAt @db.Timestamp(6)
+  
+  user              User        @relation(fields: [userId], references: [id])
 
-  @@index([userId], map: "IDX_d35cb3c13a18e1ea1705b2817b")
+  @@index([userId])
   @@map("payments")
 }
 
-model Download {
-  id        String   @id(map: "PK_60f7fa2aa9b7138737ab957a436") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  fileId    String   @db.Uuid
-  ipAddress String   @db.VarChar
-  adShown   Boolean  @default(false)
-  adClicked Boolean  @default(false)
-  createdAt DateTime @default(now()) @db.Timestamp(6)
-  file      File     @relation(fields: [fileId], references: [id])
+model PricingRule {
+  id          String      @id @default(uuid()) @db.Uuid
+  name        String      @db.VarChar
+  type        PricingType
+  pricePerUnit Int        // in cents per GB (storage) or per day (retention)
+  minUnits    Int         @default(1)
+  maxUnits    Int?        // null means unlimited
+  isActive    Boolean     @default(true)
+  createdById String      @db.Uuid
+  createdAt   DateTime    @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime    @updatedAt @db.Timestamp(6)
+  
+  createdBy   User        @relation("Creator", fields: [createdById], references: [id])
 
-  @@index([fileId], map: "IDX_3431986f75332fab4cc0d7ddbd")
+  @@map("pricing_rules")
+}
+
+model Download {
+  id         String   @id @default(uuid()) @db.Uuid
+  fileId     String   @db.Uuid
+  userId     String?  @db.Uuid // null for anonymous downloaders
+  ipAddress  String   @db.VarChar
+  userAgent  String?  @db.VarChar
+  adShown    Boolean  @default(false)
+  adClicked  Boolean  @default(false)
+  downloaded Boolean  @default(false)
+  createdAt  DateTime @default(now()) @db.Timestamp(6)
+  
+  file       File     @relation(fields: [fileId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([fileId])
+  @@index([userId])
   @@map("downloads")
 }

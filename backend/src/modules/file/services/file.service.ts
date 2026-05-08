@@ -62,7 +62,7 @@ export class FileService {
   }
 
   async getFile(fileId: string, userId?: string): Promise<any> {
-    const file = await this.prisma.file.findUnique({
+    const file = await this.prisma.file.findFirst({
       where: { id: fileId, isDeleted: false },
       include: { user: true },
     });
@@ -71,7 +71,31 @@ export class FileService {
       throw new NotFoundException('File not found');
     }
 
-    return file;
+    return {
+      id: file.id,
+      fileName: file.fileName,
+      size: file.size,
+      mimeType: file.mimeType,
+      downloadCount: file.downloadCount,
+      isPermanent: file.isPermanent,
+      expiryDate: file.expiryDate,
+      createdAt: file.createdAt,
+    };
+  }
+
+  async browseFiles(): Promise<any[]> {
+    return this.prisma.file.findMany({
+      where: { isDeleted: false },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        fileName: true,
+        size: true,
+        downloadCount: true,
+        createdAt: true,
+        user: { select: { email: true } },
+      },
+    });
   }
 
   async getUserFiles(userId: string): Promise<any[]> {

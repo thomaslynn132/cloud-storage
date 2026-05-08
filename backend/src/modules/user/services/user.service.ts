@@ -43,4 +43,24 @@ export class UserService {
       planType: user.planType,
     };
   }
+
+  async getDownloadHistory(userId: string) {
+    const downloads = await this.prisma.download.findMany({
+      where: { userId },
+      include: {
+        file: {
+          select: {
+            id: true,
+            fileName: true,
+            size: true,
+            downloadCount: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    return downloads;
+  }
 }

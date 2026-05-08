@@ -69,10 +69,16 @@ export class AuthService {
   }
 
   private generateTokens(user: any) {
-    const payload = { sub: user.id, email: user.email, planType: user.planType };
+    const payload = { sub: user.id, email: user.email, planType: user.planType, userType: user.userType };
     return {
       accessToken: this.jwtService.sign(payload, { expiresIn: '15m', secret: jwtConfig.secret }),
       refreshToken: this.jwtService.sign(payload, { expiresIn: '7d', secret: jwtConfig.secret }),
+      user: {
+        id: user.id,
+        email: user.email,
+        userType: user.userType,
+        planType: user.planType,
+      },
     };
   }
 }

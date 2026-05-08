@@ -16,6 +16,11 @@ export const authService = {
     return data;
   },
 
+  async fetchProfile() {
+    const { data } = await api.get('/users/profile');
+    return data;
+  },
+
   logout() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('accessToken');

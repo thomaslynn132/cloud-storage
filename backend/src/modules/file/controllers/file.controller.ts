@@ -19,6 +19,22 @@ export class FileController {
 
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @ApiOperation({ summary: 'Browse all available files (for downloaders)' })
+  @ApiResponse({ status: 200, description: 'Returns list of available files' })
+  @Get('browse')
+  async browseFiles() {
+    return this.fileService.browseFiles();
+  }
+
+  @ApiOperation({ summary: 'Get public file info' })
+  @ApiResponse({ status: 200, description: 'Returns file info' })
+  @Get(':id')
+  async getFileInfo(@Param('id') id: string) {
+    return this.fileService.getFile(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a file' })
   @ApiResponse({ status: 200, description: 'File deleted' })
   @Delete(':id')

@@ -9,12 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+
+function getDashboardPath(userType: string): string {
+  switch (userType) {
+    case 'ADMIN': return '/admin';
+    case 'DOWNLOADER': return '/downloader';
+    default: return '/dashboard';
+  }
+}
 
 export default function Register() {
   const router = useRouter();
@@ -31,8 +35,8 @@ export default function Register() {
 
     try {
       const data = await authService.register(email, password, userType);
-      authService.setTokens(data.accessToken, data.refreshToken, { email });
-      router.push('/dashboard');
+      authService.setTokens(data.accessToken, data.refreshToken, data.user);
+      router.push(getDashboardPath(data.user.userType));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed');
     } finally {
@@ -54,19 +58,12 @@ export default function Register() {
           )}
           <form onSubmit={handleSubmit} className="space-y-6">
             <Input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
+              type="email" placeholder="Email" value={email}
+              onChange={(e) => setEmail(e.target.value)} required
             />
             <Input
-              type="password"
-              placeholder="Password (min 8 chars)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
+              type="password" placeholder="Password (min 8 chars)" value={password}
+              onChange={(e) => setPassword(e.target.value)} required minLength={8}
             />
             <Select value={userType} onValueChange={setUserType}>
               <SelectTrigger>
@@ -83,9 +80,7 @@ export default function Register() {
           </form>
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{' '}
-            <Link href="/login" className="text-primary hover:underline">
-              Sign In
-            </Link>
+            <Link href="/login" className="text-primary hover:underline">Sign In</Link>
           </p>
         </CardContent>
       </Card>

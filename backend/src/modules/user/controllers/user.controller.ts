@@ -25,4 +25,13 @@ export class UserController {
   async getStorageInfo(@Request() req) {
     return this.userService.getStorageInfo(req.user.userId);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get download history' })
+  @ApiResponse({ status: 200, description: 'Returns download history' })
+  @Get('downloads')
+  async getDownloadHistory(@Request() req) {
+    return this.userService.getDownloadHistory(req.user.userId);
+  }
 }

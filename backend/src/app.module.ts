@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { CommonModule } from './common/common.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { FileModule } from './modules/file/file.module';
@@ -37,6 +38,7 @@ import { PrismaService } from './services/prisma.service';
       }),
       inject: [ConfigService],
     }),
+    CommonModule,
     AuthModule,
     UserModule,
     FileModule,

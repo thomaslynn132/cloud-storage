@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
+import { Permissions } from '../../../common/constants/permissions';
+import { PermissionGuard } from '../../../common/guards/permission.guard';
 import { FileService } from '../services/file.service';
 
 @ApiTags('files')
@@ -8,7 +10,8 @@ import { FileService } from '../services/file.service';
 export class FileController {
   constructor(private fileService: FileService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(Permissions.FILES_VIEW_OWN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get user files' })
   @ApiResponse({ status: 200, description: 'Returns list of files' })
@@ -17,7 +20,8 @@ export class FileController {
     return this.fileService.getUserFiles(req.user.userId);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(Permissions.FILES_BROWSE)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Browse all available files (for downloaders)' })
   @ApiResponse({ status: 200, description: 'Returns list of available files' })
@@ -33,22 +37,23 @@ export class FileController {
     return this.fileService.getFile(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(Permissions.FILES_RENAME)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update a file' })
-  @ApiResponse({ status: 200, description: 'File updated' })
+  @ApiOperation({ summary: 'Rename a file' })
+  @ApiResponse({ status: 200, description: 'File renamed' })
   @Patch(':id/rename')
   async renameFile(@Param('id') id: string, @Body('fileName') fileName: string, @Request() req) {
     return this.fileService.renameFile(id, req.user.userId, fileName);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(Permissions.FILES_DELETE)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a file' })
   @ApiResponse({ status: 200, description: 'File deleted' })
   @Delete(':id')
   async deleteFile(@Param('id') id: string, @Request() req) {
-    await this.fileService.deleteFile(id, req.user.userId);
-    return { message: 'File deleted successfully' };
+    return this.fileService.deleteFile(id, req.user.userId);
   }
 }

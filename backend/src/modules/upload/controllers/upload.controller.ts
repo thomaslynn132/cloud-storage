@@ -1,6 +1,8 @@
-import { Controller, Post, Body, UseGuards, Request, Get, Query } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RequirePermissions } from '../../../common/decorators/permissions.decorator';
+import { Permissions } from '../../../common/constants/permissions';
+import { PermissionGuard } from '../../../common/guards/permission.guard';
 import { UploadService } from '../services/upload.service';
 import { InitUploadDto, CompleteUploadDto } from '../dto/upload.dto';
 
@@ -9,7 +11,8 @@ import { InitUploadDto, CompleteUploadDto } from '../dto/upload.dto';
 export class UploadController {
   constructor(private uploadService: UploadService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(Permissions.FILES_UPLOAD)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Initialize file upload' })
   @ApiResponse({ status: 201, description: 'Upload initialized' })
@@ -18,7 +21,8 @@ export class UploadController {
     return this.uploadService.initUpload(req.user.userId, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PermissionGuard)
+  @RequirePermissions(Permissions.FILES_UPLOAD)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Complete file upload' })
   @ApiResponse({ status: 200, description: 'Upload completed' })

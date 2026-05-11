@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { FileService } from '../services/file.service';
@@ -31,6 +31,15 @@ export class FileController {
   @Get(':id')
   async getFileInfo(@Param('id') id: string) {
     return this.fileService.getFile(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update a file' })
+  @ApiResponse({ status: 200, description: 'File updated' })
+  @Patch(':id/rename')
+  async renameFile(@Param('id') id: string, @Body('fileName') fileName: string, @Request() req) {
+    return this.fileService.renameFile(id, req.user.userId, fileName);
   }
 
   @UseGuards(JwtAuthGuard)

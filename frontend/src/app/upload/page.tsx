@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { authService } from '@/services/auth.service';
 import { fileService } from '@/services/file.service';
 import api from '@/services/api';
@@ -9,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 
 export default function Upload() {
@@ -91,8 +91,11 @@ export default function Upload() {
 
       setProgress(100);
       setResult({ fileId, isDuplicate });
+      toast.success('File uploaded successfully');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Upload failed');
+      const msg = err.response?.data?.message || 'Upload failed';
+      setError(msg);
+      toast.error(msg);
       setUploading(false);
     }
   };
@@ -151,11 +154,18 @@ export default function Upload() {
                 </Alert>
               )}
               <div
-                className={`border-2 border-dashed rounded-lg p-12 text-center ${dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'}`}
+                className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer ${
+                  dragActive
+                    ? 'border-blue-500 bg-blue-50'
+                    : file
+                      ? 'border-green-400 bg-green-50'
+                      : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
+                }`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
+                onClick={() => document.getElementById('fileInput')?.click()}
               >
                 <input
                   type="file"
@@ -163,12 +173,20 @@ export default function Upload() {
                   className="hidden"
                   onChange={(e) => e.target.files?.[0] && setFile(e.target.files[0])}
                 />
-                <label htmlFor="fileInput" className="cursor-pointer">
-                  <div className="text-gray-500">
-                    <p className="text-lg">Drag & drop your file here</p>
-                    <p>or click to browse</p>
-                  </div>
-                </label>
+                <div className="text-gray-500">
+                  {file ? (
+                    <>
+                      <p className="text-lg font-medium text-green-700">{file.name}</p>
+                      <p className="text-sm">{(file.size / (1024 * 1024)).toFixed(2)} MB selected</p>
+                      <p className="text-xs mt-1 text-gray-400">Click or drop another to change</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-lg">Drag & drop your file here</p>
+                      <p className="text-sm mt-1">or click to browse</p>
+                    </>
+                  )}
+                </div>
               </div>
 
               {file && (
@@ -190,7 +208,13 @@ export default function Upload() {
                   </div>
 
                   {uploading && (
-                    <Progress value={progress} className="w-full" />
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-sm text-gray-500">
+                        <span>Uploading...</span>
+                        <span>{Math.round(progress)}%</span>
+                      </div>
+                      <Progress value={progress} className="w-full" />
+                    </div>
                   )}
 
                   <Button

@@ -17,5 +17,13 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "@next/swc-win32-x64-msvc": "^16.2.6",
+    "@swc/helpers": "^0.5.21",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "picocolors": "^1.1.1",
+    "tailwind-merge": "^3.6.0"
   }
 }

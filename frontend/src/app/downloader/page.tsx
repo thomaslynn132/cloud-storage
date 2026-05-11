@@ -3,11 +3,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { authService } from '@/services/auth.service';
 import api from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DownloaderDashboard() {
   const router = useRouter();
@@ -38,7 +40,7 @@ export default function DownloaderDashboard() {
       setFiles(filesData);
       setDownloads(downloadsData);
     } catch (err) {
-      console.error('Failed to load data', err);
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -92,7 +94,19 @@ export default function DownloaderDashboard() {
   const totalDownloads = files.reduce((s: number, f: any) => s + f.downloadCount, 0);
   const myDownloads = downloads.filter((d: any) => d.downloaded).length;
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
+        </div>
+        <Skeleton className="h-40" />
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-64" />
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -197,9 +211,19 @@ export default function DownloaderDashboard() {
             </Card>
 
             {filteredFiles.length === 0 ? (
-              <p className="text-gray-500 text-center py-12">
-                {search || typeFilter !== 'all' ? 'No files match your filters.' : 'No files available yet.'}
-              </p>
+              <div className="text-center py-16">
+                <div className="text-gray-300 mb-3">
+                  <svg className="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 15a4 4 0 001.5 3.09M9 21h6m-6 0a2 2 0 01-2-2v-4a2 2 0 012-2h6a2 2 0 012 2v4a2 2 0 01-2 2m-6 0h6m-3-4h.01M21 15a4 4 0 01-1.5 3.09M7 10a5 5 0 1110 0" />
+                  </svg>
+                </div>
+                <p className="text-gray-500 text-lg">
+                  {search || typeFilter !== 'all' ? 'No files match your filters.' : 'No files available yet.'}
+                </p>
+                <p className="text-gray-400 text-sm mt-1">
+                  {search || typeFilter !== 'all' ? 'Try adjusting your search or filters.' : 'Check back later for new uploads.'}
+                </p>
+              </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredFiles.map((file: any) => (
@@ -229,7 +253,15 @@ export default function DownloaderDashboard() {
             <CardHeader><CardTitle>My Download History ({downloads.length})</CardTitle></CardHeader>
             <CardContent>
               {downloads.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No downloads yet.</p>
+                <div className="text-center py-12">
+                  <div className="text-gray-300 mb-3">
+                    <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-gray-500">No downloads yet.</p>
+                  <p className="text-gray-400 text-sm mt-1">Browse files and download one to get started.</p>
+                </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">

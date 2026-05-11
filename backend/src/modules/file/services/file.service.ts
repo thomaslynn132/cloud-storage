@@ -112,6 +112,21 @@ export class FileService {
     });
   }
 
+  async renameFile(fileId: string, userId: string, newName: string): Promise<any> {
+    const file = await this.prisma.file.findUnique({
+      where: { id: fileId, userId },
+    });
+
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+
+    return this.prisma.file.update({
+      where: { id: fileId },
+      data: { fileName: newName },
+    });
+  }
+
   async deleteFile(fileId: string, userId: string): Promise<void> {
     const file = await this.prisma.file.findUnique({
       where: { id: fileId, userId },

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import api from '@/services/api';
 import { authService } from '@/services/auth.service';
 import { paymentService } from '@/services/payment.service';
@@ -9,6 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 type Tab = 'overview' | 'users' | 'files' | 'payments' | 'activity';
 
@@ -49,32 +56,30 @@ export default function AdminDashboard() {
       setFiles(filesData);
       setPayments(paymentsData);
     } catch (err) {
-      console.error('Failed to load admin data', err);
+      toast.error('Failed to load admin data');
     } finally {
       setLoading(false);
     }
   };
 
   const handleUpdateUser = async (id: string, data: any) => {
-    try { await api.put(`/admin/users/${id}`, data); loadAll(); }
-    catch { alert('Failed to update user'); }
+    try { await api.put(`/admin/users/${id}`, data); loadAll(); toast.success('User updated'); }
+    catch { toast.error('Failed to update user'); }
   };
 
   const handleDeleteUser = async (id: string) => {
-    if (!confirm('Delete this user and all their files?')) return;
-    try { await api.delete(`/admin/users/${id}`); loadAll(); }
-    catch { alert('Failed to delete user'); }
+    try { await api.delete(`/admin/users/${id}`); loadAll(); toast.success('User deleted'); }
+    catch { toast.error('Failed to delete user'); }
   };
 
   const handleConfirmPayment = async (paymentId: string, status: 'approved' | 'rejected') => {
-    try { await paymentService.confirmPayment(paymentId, status); loadAll(); }
-    catch { alert('Failed to update payment'); }
+    try { await paymentService.confirmPayment(paymentId, status); loadAll(); toast.success(`Payment ${status}`); }
+    catch { toast.error('Failed to update payment'); }
   };
 
   const handleDeleteFile = async (fileId: string) => {
-    if (!confirm('Delete this file? This will also remove it from storage.')) return;
-    try { await api.delete(`/files/${fileId}`); loadAll(); }
-    catch { alert('Failed to delete file'); }
+    try { await api.delete(`/files/${fileId}`); loadAll(); toast.success('File deleted'); }
+    catch { toast.error('Failed to delete file'); }
   };
 
   const handleLogout = () => { authService.logout(); router.push('/login'); };
@@ -118,7 +123,20 @@ export default function AdminDashboard() {
     f.fileName.toLowerCase().includes(fileSearch.toLowerCase())
   );
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <div className="flex gap-2">
+          {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-9 w-28" />)}
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {[1,2,3,4].map(i => <Skeleton key={i} className="h-32" />)}
+        </div>
+        <Skeleton className="h-64" />
+      </div>
+    </div>
+  );
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'overview', label: 'Overview' },
@@ -265,7 +283,23 @@ export default function AdminDashboard() {
                               {u.isActive ? 'Deactivate' : 'Activate'}
                             </Button>
                             {u.userType !== 'ADMIN' && (
-                              <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(u.id)}>Delete</Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="destructive" size="sm">Delete</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete User</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will permanently delete {u.email} and all their files.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteUser(u.id)}>Delete</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             )}
                           </div>
                         </td>
@@ -318,7 +352,23 @@ export default function AdminDashboard() {
                         </td>
                         <td className="py-3 pr-4 text-gray-600">{new Date(f.createdAt).toLocaleDateString()}</td>
                         <td className="py-3">
-                          <Button variant="destructive" size="sm" onClick={() => handleDeleteFile(f.id)}>Delete</Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm">Delete</Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete File</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Delete "{f.fileName}"? This will also remove it from storage.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteFile(f.id)}>Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </td>
                       </tr>
                     ))}

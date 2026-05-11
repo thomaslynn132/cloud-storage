@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { authService } from '@/services/auth.service';
 import { fileService } from '@/services/file.service';
 import api from '@/services/api';
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
@@ -26,6 +28,8 @@ export default function UploaderDashboard() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'downloads'>('date');
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
   const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
@@ -48,7 +52,7 @@ export default function UploaderDashboard() {
       setStorageInfo(storageData);
       setProfile(profileData);
     } catch (err) {
-      console.error('Failed to load data', err);
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -58,6 +62,7 @@ export default function UploaderDashboard() {
     const url = `${window.location.origin}/file/${fileId}`;
     navigator.clipboard.writeText(url);
     setCopiedId(fileId);
+    toast.success('Link copied to clipboard');
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -65,18 +70,38 @@ export default function UploaderDashboard() {
     try {
       await fileService.deleteFile(fileId);
       setSelected((prev) => { const s = new Set(prev); s.delete(fileId); return s; });
+      toast.success('File deleted');
       loadData();
     } catch (err) {
-      console.error('Failed to delete file');
+      toast.error('Failed to delete file');
     }
   };
 
   const handleBulkDelete = async () => {
+    let success = 0;
     for (const id of selected) {
-      try { await fileService.deleteFile(id); } catch (e) { /* skip */ }
+      try { await fileService.deleteFile(id); success++; } catch (e) { /* skip */ }
     }
     setSelected(new Set());
+    toast.success(`Deleted ${success} file${success !== 1 ? 's' : ''}`);
     loadData();
+  };
+
+  const handleRename = async (fileId: string) => {
+    if (!renameValue.trim()) { setRenaming(null); return; }
+    try {
+      await api.patch(`/files/${fileId}/rename`, { fileName: renameValue.trim() });
+      toast.success('File renamed');
+      setRenaming(null);
+      loadData();
+    } catch {
+      toast.error('Failed to rename file');
+    }
+  };
+
+  const startRename = (file: any) => {
+    setRenaming(file.id);
+    setRenameValue(file.fileName);
   };
 
   const toggleSelect = (id: string) => {
@@ -138,7 +163,18 @@ export default function UploaderDashboard() {
     return i > 0 ? name.slice(i + 1).toUpperCase() : '?';
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>;
+  if (loading) return (
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
+        </div>
+        <Skeleton className="h-32" />
+        <Skeleton className="h-64" />
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -219,9 +255,20 @@ export default function UploaderDashboard() {
           </CardHeader>
           <CardContent>
             {sortedFiles.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
-                {search ? 'No files match your search.' : 'No files yet. Upload your first file!'}
-              </p>
+              <div className="text-center py-12">
+                <div className="text-gray-300 mb-3">
+                  <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                </div>
+                <p className="text-gray-500 text-lg mb-2">
+                  {search ? 'No files match your search.' : 'No files yet'}
+                </p>
+                <p className="text-gray-400 text-sm mb-4">
+                  {search ? 'Try a different search term.' : 'Upload your first file to get started.'}
+                </p>
+                {!search && <Button asChild><Link href="/upload">Upload File</Link></Button>}
+              </div>
             ) : (
               <>
                 {selected.size > 0 && (
@@ -279,7 +326,20 @@ export default function UploaderDashboard() {
                               <span className="text-xs bg-gray-200 rounded px-1.5 py-0.5 font-mono text-gray-600">
                                 {getExt(file.fileName)}
                               </span>
-                              <span className="truncate max-w-[200px]">{file.fileName}</span>
+                              {renaming === file.id ? (
+                                <form onSubmit={(e) => { e.preventDefault(); handleRename(file.id); }} className="flex gap-1">
+                                  <Input
+                                    value={renameValue}
+                                    onChange={(e) => setRenameValue(e.target.value)}
+                                    className="h-7 text-sm max-w-[180px]"
+                                    autoFocus
+                                    onBlur={() => setRenaming(null)}
+                                  />
+                                  <Button type="submit" size="xs">Save</Button>
+                                </form>
+                              ) : (
+                                <span className="truncate max-w-[150px]">{file.fileName}</span>
+                              )}
                               {file.isPermanent && (
                                 <span className="text-xs text-green-600 bg-green-50 rounded px-1.5 py-0.5">Permanent</span>
                               )}
@@ -300,6 +360,12 @@ export default function UploaderDashboard() {
                           </td>
                           <td className="py-3">
                             <div className="flex gap-1">
+                              <Button
+                                variant="outline" size="sm"
+                                onClick={() => startRename(file)}
+                              >
+                                Rename
+                              </Button>
                               <Button
                                 variant="outline" size="sm"
                                 onClick={() => handleCopyLink(file.id)}

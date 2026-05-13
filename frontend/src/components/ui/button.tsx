@@ -41,6 +41,10 @@ const buttonVariants = cva(
   }
 )
 
+interface ButtonCustomProps {
+  asChild?: boolean;
+}
+
 function Button({
   className,
   variant = "default",
@@ -48,7 +52,7 @@ function Button({
   asChild,
   children,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants> & ButtonCustomProps) {
   if (asChild) {
     return (
       <ButtonPrimitive
